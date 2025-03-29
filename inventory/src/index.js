@@ -9,6 +9,7 @@ import Dashboard from './pages/dashboard';
 import Product from './pages/product';
 import Customer from './pages/customer';
 import Analytics from './pages/analytics';
+import Orderslist from './pages/orderslist';
 import Setting from './pages/setting';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -20,6 +21,7 @@ root.render(
           <Route path="/" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/product" element={<Product />} />
+          <Route path="/orderslist" element={<Orderslist />} />
           <Route path="/customer" element={<Customer />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/setting" element={<Setting />} />

@@ -1,3 +1,25 @@
 {
-  "products": []
+  "products": [
+    {
+      "id": "aicba",
+      "name": "sdahcbd",
+      "sku": "asdvub",
+      "location": "dsvuucb",
+      "price": "vudbc",
+      "stock": "dsviub"
+    }
+  ],
+  "users": [],
+  "sessions": [],
+  "orders": [
+    {
+      "id": "",
+      "customerName": "ckjb",
+      "address": "scb",
+      "contactNumber": "sc",
+      "product": "csjbb",
+      "quantity": "68",
+      "status": "cjn"
+    }
+  ]
 }

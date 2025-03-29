@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import companyLogo from './assests/arniya.jpeg';
+import { useLocation, useNavigate } from "react-router-dom";
+import Sidebar from '../components/sidebar';
 import Logout from '../components/logout';
 
 const Customer = () => {
@@ -8,6 +8,8 @@ const Customer = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,38 +34,30 @@ const Customer = () => {
   const handleLogout = () => {
     localStorage.clear();
     sessionStorage.clear();
-    navigate("/Login");
+    navigate("/");
   };
 
+  const location = useLocation();
+  const currentPath = location.pathname;
+
+  console.log("Current location path: ", currentPath);
+
   const filteredCustomers = customers.filter((customer) =>
-    customer.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.Email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.Phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.Order.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.price.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.Total.toLowerCase().includes(searchTerm.toLowerCase())
+    String(customer.Name).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(customer.Email).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(customer.Phone).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(customer.Order).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(customer.price).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(customer.Total).toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredCustomers.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const displayedCustomers = filteredCustomers.slice(startIndex, startIndex + rowsPerPage);
 
   return (
     <div style={styles.container}>
-      <aside style={styles.sidebar}>
-        <img src={companyLogo} alt="Logo" style={styles.logoImg} />
-        <h2 style={styles.logo}>ARNIYA</h2>
-        <nav style={styles.nav}>
-          <button style={styles.navItem} onClick={() => navigate("/Dashboard")}>🏠 Dashboard</button>
-          <button style={styles.navItem} onClick={() => navigate("/product")}>📦 Product</button>
-          <button style={styles.navItem} onClick={() => navigate("/customer")}>👥 Customer</button>
-          <button style={styles.navItem} onClick={() => navigate("/analytics")}>📊 Analytics</button>
-          <button style={styles.navItem} onClick={() => navigate("/setting")}>⚙️ Setting</button>
-          <button
-            style={styles.navItemLogout}
-            onClick={() => setIsModalOpen(true)} // Open modal on click
-            >
-            🚪 Log Out
-            </button>
-        </nav>
-      </aside>
-
+      <Sidebar setIsModalOpen={setIsModalOpen} />
       <div style={styles.main}>
         <div style={styles.header}>
           <input
@@ -90,7 +84,7 @@ const Customer = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredCustomers.map((item, index) => (
+            {displayedCustomers.map((item, index) => (
               <tr key={index} style={styles.tr}>
                 <td style={styles.td}>{item.Name}</td>
                 <td style={styles.td}>{item.Email}</td>
@@ -102,6 +96,25 @@ const Customer = () => {
             ))}
           </tbody>
         </table>
+        <div style={styles.pagination}>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            style={styles.pageButton}
+          >
+            Previous
+          </button>
+          <span style={styles.pageInfo}>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            style={styles.pageButton}
+          >
+            Next
+          </button>
+        </div>
       </div>
       <Logout
         isOpen={isModalOpen}
@@ -117,55 +130,6 @@ const styles = {
     display: "flex",
     fontFamily: "Arial, sans-serif",
     height: "100vh",
-  },
-  sidebar: {
-    width: "250px",
-    height: "100%",
-    backgroundColor: "#1e1e2f",
-    color: "#fff",
-    display: "flex",
-    flexDirection: "column",
-    padding: "20px 15px",
-  },
-  logoImg: {
-    width: "50px",
-    height: "50px",
-    borderRadius: "50%",
-    margin: "0 auto 15px",
-  },
-  logo: {
-    marginBottom: "30px",
-    fontSize: "24px",
-    color: "#6c63ff",
-    textAlign: "center",
-  },
-  nav: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px",
-  },
-  navItem: {
-    backgroundColor: "transparent",
-    color: "#fff",
-    border: "none",
-    textAlign: "left",
-    padding: "10px 20px",
-    borderRadius: "10px",
-    fontSize: "16px",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-  },
-  navItemLogout: {
-    marginTop: "auto",
-    backgroundColor: "#dc3545",
-    color: "#fff",
-    border: "none",
-    padding: "10px 20px",
-    textAlign: "left",
-    borderRadius: "10px",
-    fontSize: "16px",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
   },
   main: {
     flexGrow: 1,
@@ -203,6 +167,19 @@ const styles = {
   td: {
     padding: '12px 15px',
   },
+  activeNavItem: {
+    backgroundColor: "white",
+    color: "black", 
+    fontWeight: "bold",
+    transform: "scale(1.05)",
+    borderRadius:"0 30px 30px 0",
+  },
+  pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px' },
+  pageButton: {
+    padding: '8px 16px', margin: '0 10px', backgroundColor: '#111', color: '#fff',
+    border: 'none', borderRadius: '5px', cursor: 'pointer', disabled: { backgroundColor: '#ccc' }
+  },
+  pageInfo: { fontSize: '14px' },
 };
 
 export default Customer;

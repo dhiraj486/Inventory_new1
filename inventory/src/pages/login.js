@@ -3,12 +3,22 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom"; // React Router for navigation
 
 const Login = () => {
-  const navigate = useNavigate(); // Initialize navigate function from React Router
+  const navigate = useNavigate();
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [email, setEmail] = useState("");
-  // const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [users, setUsers] = useState([]);
+  let tempDatabase = [];
+  const REMEMBER_ME_EXPIRY = 24 * 60 * 60 * 1000;
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/users")
+      .then((response) => {
+        setUsers(response.data);
+      })
+      .catch((error) => console.error("Error fetching users:", error));
+  }, []);
 
   // Styles
   const containerStyle = {
@@ -144,45 +154,49 @@ const Login = () => {
   //     alert("Error sending OTP.");
   //   }
   // };
-  
-    useEffect(() => {
-    const storedEmail = localStorage.getItem("rememberedEmail");
-    if (storedEmail) {
-      setEmail(storedEmail);
-      setRememberMe(true);
+  useEffect(() => {
+    const storedData = JSON.parse(localStorage.getItem("rememberMeData"));
+    if (storedData && storedData.email && storedData.timestamp) {
+      const currentTime = new Date().getTime();
+      if (currentTime - storedData.timestamp < REMEMBER_ME_EXPIRY) {
+        setEmail(storedData.email);
+        setRememberMe(true);
+      } else {
+        localStorage.removeItem("rememberMeData"); // Remove expired data
+      }
     }
   }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-  
     if (!email) {
       alert("Please enter your email.");
       return;
     }
   
     try {
-      const response = await axios.post("http://localhost:5000/api/send-otp", {
-        email,
-      });
-  
+      console.log(" Sending OTP request for:", email);
+      const response = await axios.post("http://localhost:5000/api/send-otp", { email });
+      console.log("OTP API response:", response.data);
       if (response.data.success) {
         if (rememberMe) {
-          localStorage.setItem("rememberedEmail", email);
+          localStorage.setItem("rememberMeData", JSON.stringify({
+            email: email,
+            timestamp: new Date().getTime(),
+          }));
         } else {
-          localStorage.removeItem("rememberedEmail");
+          localStorage.removeItem("rememberMeData");
         }
-  
         setShowOtpModal(true);
         alert("OTP sent to your email.");
       } else {
         alert(response.data.message || "Failed to send OTP.");
       }
     } catch (error) {
-      console.error(error);
-      alert("Error sending OTP.");
+      console.error(" OTP API Error:", error.response?.data || error.message);
+      alert(`Error sending OTP: ${error.response?.data?.message || error.message}`);
     }
-  };  
+  };
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (!otp) {
@@ -190,28 +204,27 @@ const Login = () => {
       return;
     }
     try {
-      const response = await axios.post("http://localhost:5000/api/verify-otp", {
-        email,
-        otp,
-      });
+      const response = await axios.post("http://localhost:5000/api/verify-otp", { email, otp });
       if (response.data.success) {
         alert("Login successful!");
         setShowOtpModal(false);
-        // Handle Remember Me here
         if (rememberMe) {
-          localStorage.setItem("rememberedEmail", email);
+          localStorage.setItem("rememberMeData", JSON.stringify({
+            email: email,
+            timestamp: new Date().getTime()
+          }));
         } else {
-          localStorage.removeItem("rememberedEmail");
+          localStorage.removeItem("rememberMeData");
         }
-        window.location.href = "/dashboard";
+        navigate("/Dashboard");
       } else {
         alert(response.data.message || "Invalid OTP.");
       }
     } catch (error) {
-      console.error(error);
       alert("Error verifying OTP.");
     }
   };
+
   return (
     <div style={containerStyle}>
       {showOtpModal && (

@@ -1,23 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Logout from '../components/logout';
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import {  BarChart,Bar,LineChart,Line,PieChart,Pie,Cell,XAxis,YAxis,CartesianGrid,Tooltip,ResponsiveContainer,Legend,} from "recharts";
 // import { FaBell, FaUserCircle } from "react-icons/fa";
-import companyLogo from './assests/arniya.jpeg';
+import Sidebar from '../components/sidebar';
 
 const Dashboard = () => {
   const API_BASE_URL = "https://example.com/api";
@@ -41,8 +27,13 @@ const Dashboard = () => {
   const handleLogout = () => {
     localStorage.clear();
     sessionStorage.clear();
-    navigate("/Login");
+    navigate("/");
   };
+
+  const location = useLocation(); // 👈 This gives you the current URL path
+  const currentPath = location.pathname;
+
+  console.log("Current location path: ", currentPath);
 
   const getWeekRange = (date) => {
     const dt = new Date(date);
@@ -130,41 +121,11 @@ const Dashboard = () => {
 
   return (
     <div style={styles.container}>
-      <aside style={styles.sidebar}>
-        <img src={companyLogo} alt="Logo" style={styles.logoImg} />
-        <h2 style={styles.logo}>ARNIYA</h2>
-        <nav style={styles.nav}>
-          <button style={styles.navItem} onClick={() => navigate("/Dashboard")}>🏠 Dashboard</button>
-          <button style={styles.navItem} onClick={() => navigate("/product")}>📦 Product</button>
-          <button style={styles.navItem} onClick={() => navigate("/customer")}>👥 Customer</button>
-          <button style={styles.navItem} onClick={() => navigate("/analytics")}>📊 Analytics</button>
-          <button style={styles.navItem} onClick={() => navigate("/setting")}>⚙️ Setting</button>
-          <button
-            style={styles.navItemLogout}
-            onClick={() => setIsModalOpen(true)} // Open modal on click
-            >
-            🚪 Log Out
-            </button>
-          {/* <button
-  style={styles.navItemLogout}
-  onClick={() => {
-    const confirmLogout = window.confirm("Are you sure you want to log out?");
-    if (confirmLogout) {
-      localStorage.clear();
-      sessionStorage.clear();
-      navigate("/login");
-    }
-  }}
->
-  Log Out
-</button> */}
-        </nav>
-      </aside>
-
+      <Sidebar setIsModalOpen={setIsModalOpen} />
       <main style={styles.mainContent}>
         <header style={styles.header}>
           <div style={styles.headerLeft}>
-            <h1>Welcome, Arniya</h1>
+            <h1>Welcome, Arinya</h1>
           </div>
           <div style={styles.headerRight}>
             {/* <FaBell style={styles.icon} />
@@ -279,48 +240,6 @@ const styles = {
     display: "flex",
     fontFamily: "Arial, sans-serif",
     height: "100vh",
-  },
-  sidebar: {
-    width: "250px",
-    backgroundColor: "#1e1e2f",
-    color: "#fff",
-    display: "flex",
-    flexDirection: "column",
-    padding: "20px 15px",
-  },
-  logo: {
-    marginBottom: "30px",
-    fontSize: "24px",
-    color: "#6c63ff",
-    textAlign: "center",
-  },
-  nav: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px",
-  },
-  navItem: {
-    backgroundColor: "transparent",
-    color: "#fff",
-    border: "none",
-    textAlign: "left",
-    padding: "10px 20px",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontSize: "16px",
-    transition: "all 0.3s ease",
-  },
-  navItemLogout: {
-    marginTop: "auto",
-    backgroundColor: "#dc3545",
-    color: "#fff",
-    border: "none",
-    padding: "10px 20px",
-    textAlign: "left",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontSize: "16px",
-    transition: "all 0.3s ease",
   },
   mainContent: {
     flexGrow: 1,

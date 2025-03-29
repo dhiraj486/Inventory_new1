@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from 'react-router-dom';
-import companyLogo from './assests/arniya.jpeg';
+import { useLocation, useNavigate } from "react-router-dom";
+import Sidebar from '../components/sidebar';
 import Logout from '../components/logout';
 import axios from 'axios';
 import {
@@ -66,8 +66,13 @@ const Analytics = () => {
   const handleLogout = () => {
     localStorage.clear();
     sessionStorage.clear();
-    navigate("/Login");
+    navigate("/");
   };
+
+  const location = useLocation(); // 👈 This gives you the current URL path
+  const currentPath = location.pathname;
+
+  console.log("Current location path: ", currentPath);
 
   useEffect(() => {
     fetchSalesData(salesTimeframe);
@@ -107,23 +112,7 @@ const Analytics = () => {
 
   return (
     <div style={styles.dashboardContainer}>
-      <aside style={styles.sidebar}>
-        <img src={companyLogo} alt="Logo" style={styles.logoImg} />
-        <h2 style={styles.logo}>ARNIYA</h2>
-        <nav style={styles.nav}>
-          <button style={styles.navItem} onClick={() => navigate("/Dashboard")}>🏠 Dashboard</button>
-          <button style={styles.navItem} onClick={() => navigate("/product")}>📦 Product</button>
-          <button style={styles.navItem} onClick={() => navigate("/customer")}>👥 Customer</button>
-          <button style={styles.navItem} onClick={() => navigate("/analytics")}>📊 Analytics</button>
-          <button style={styles.navItem} onClick={() => navigate("/setting")}>⚙️ Setting</button>
-          <button
-            style={styles.navItemLogout}
-            onClick={() => setIsModalOpen(true)} // Open modal on click
-            >
-            🚪 Log Out
-            </button>
-        </nav>
-      </aside>
+      <Sidebar setIsModalOpen={setIsModalOpen} />
       <main style={styles.dashboardContent}>
         <section style={styles.topCards}>
           <Card
@@ -305,55 +294,6 @@ const styles = {
     backgroundColor: "#f5f5f5",
     overflow: "hidden",
   },
-  sidebar: {
-    width: "250px",
-    height: "100%",
-    backgroundColor: "#1e1e2f",
-    color: "#fff",
-    display: "flex",
-    flexDirection: "column",
-    padding: "20px 15px",
-  },
-  logo: {
-    marginBottom: "30px",
-    fontSize: "24px",
-    color: "#6c63ff",
-    textAlign: "center",
-  },
-  logoImg: {
-    width: "50px",
-    height: "50px",
-    borderRadius: "50%",
-    margin: "0 auto 15px",
-  },
-  nav: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px",
-  },
-  navItem: {
-    backgroundColor: "transparent",
-    color: "#fff",
-    border: "none",
-    textAlign: "left",
-    padding: "10px 20px",
-    borderRadius: "10px",
-    fontSize: "16px",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-  },
-  navItemLogout: {
-    marginTop: "auto",
-    backgroundColor: "#dc3545",
-    color: "#fff",
-    border: "none",
-    padding: "10px 20px",
-    textAlign: "left",
-    borderRadius: "10px",
-    fontSize: "16px",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-  },
   dashboardContent: {
     display: "flex",
     flexDirection: "column",
@@ -437,5 +377,12 @@ const styles = {
   activeButton: {
     backgroundColor: "#6c63ff",
     color: "#fff",
+  },
+  activeNavItem: {
+    backgroundColor: "white",
+    color:"black",
+    fontWeight: "bold",
+    transform: "scale(1.05)",
+    borderRadius:"0 30px 30px 0",
   },
 };
