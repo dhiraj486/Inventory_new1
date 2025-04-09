@@ -722,6 +722,8 @@
 const sgMail = require('@sendgrid/mail');
 const crypto = require('crypto');
 const axios = require('axios');
+const nodemailer = require('nodemailer');
+require('dotenv').config();
 
 module.exports = (pool) => {
   // Initialize SendGrid
@@ -846,106 +848,135 @@ module.exports = (pool) => {
     getAllProducts: async (req, res) => {
       try {
         const connection = await pool.getConnection();
-        const [products] = await connection.query('SELECT * FROM products');
-        connection.release();
-        res.json(products);
+        try {
+          const [products] = await connection.query('SELECT * FROM products');
+          res.json(products);
+        } finally {
+          connection.release();
+        }
       } catch (error) {
         console.error('Error fetching products:', error);
-        res.status(500).json({ message: 'Failed to retrieve products' });
+        res.status(500).json({ success: false, message: 'Failed to retrieve products' });
       }
     },
-  
-    // Add a new product
+
     createProduct: async (req, res) => {
-      const { name, sku, location, price, stock } = req.body;
-  
+      const { name, sku, location, batch, hsn, price, stock } = req.body;
+
       // Validate input
-      if (!name || !sku || !location || price == null || stock == null) {
-        return res.status(400).json({ message: 'All product fields are required' });
+      if (!name || !sku || !location || !batch || !hsn || !price || !stock) {
+        return res.status(400).json({ success: false, message: 'All fields are required' });
       }
-  
+
       try {
         const connection = await pool.getConnection();
-        const query = 'INSERT INTO products (name, sku, location, price, stock) VALUES (?, ?, ?, ?, ?)';
-        const [result] = await connection.query(query, [name, sku, location, price, stock]);
-        connection.release();
-        res.json({ message: 'Product added successfully!', productId: result.insertId });
+        try {
+          const [result] = await connection.query(
+            'INSERT INTO products (name, sku, location, batch, hsn, price, stock) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [name, sku, location, batch, hsn, price, stock]
+          );
+
+          res.json({ 
+            success: true, 
+            message: 'Product added successfully!', 
+            productId: result.insertId 
+          });
+        } finally {
+          connection.release();
+        }
       } catch (error) {
         console.error('Error adding product:', error);
-        res.status(500).json({ message: 'Failed to add product' });
+        res.status(500).json({ success: false, message: 'Failed to add product' });
       }
     },
-  
-    // Update an existing product
+
     updateProduct: async (req, res) => {
-      const { name, sku, location, price, stock } = req.body;
-      const productId = req.params.id;
-  
-      // Validate input
-      if (!name || !sku || !location || price == null || stock == null) {
-        return res.status(400).json({ message: 'All fields are required for update' });
+      const { id } = req.params;
+      const { name, sku, location, batch, hsn, price, stock } = req.body;
+
+      if (!name || !sku || !location || !batch || !hsn || !price || !stock) {
+        return res.status(400).json({ success: false, message: 'All fields are required' });
       }
-  
+
       try {
         const connection = await pool.getConnection();
-        const query = 'UPDATE products SET name=?, sku=?, location=?, price=?, stock=? WHERE id=?';
-        await connection.query(query, [name, sku, location, price, stock, productId]);
-        connection.release();
-        res.json({ message: 'Product updated successfully!' });
+        try {
+          const [result] = await connection.query(
+            'UPDATE products SET name = ?, sku = ?, location = ?, batch = ?, hsn = ?, price = ?, stock = ? WHERE id = ?',
+            [name, sku, location, batch, hsn, price, stock, id]
+          );
+
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Product not found' });
+          }
+
+          res.json({ success: true, message: 'Product updated successfully!' });
+        } finally {
+          connection.release();
+        }
       } catch (error) {
         console.error('Error updating product:', error);
-        res.status(500).json({ message: 'Failed to update product' });
+        res.status(500).json({ success: false, message: 'Failed to update product' });
       }
     },
-  
-    // Delete a product and reorder product IDs
+
     deleteProduct: async (req, res) => {
-      const productId = req.params.id;
-  
+      const { id } = req.params;
+
       try {
         const connection = await pool.getConnection();
-        // Delete the product
-        await connection.query('DELETE FROM products WHERE id = ?', [productId]);
-  
-        // Fetch the remaining products and reorder the IDs
-        const [rows] = await connection.query('SELECT id FROM products ORDER BY id');
-        let newId = 1;
-  
-        // Create an array of promises to update the IDs
-        const updateQueries = rows.map((product) => {
-          return new Promise((resolve, reject) => {
-            const query = 'UPDATE products SET id = ? WHERE id = ?';
-            connection.query(query, [newId++, product.id], (err, result) => {
-              if (err) {
-                reject(err);
-              } else {
-                resolve(result);
-              }
-            });
-          });
-        });
-  
-        // After all IDs have been updated, reset the AUTO_INCREMENT
-        Promise.all(updateQueries)
-          .then(() => {
-            connection.query('ALTER TABLE products AUTO_INCREMENT = ?', [newId], (err) => {
-              if (err) {
-                console.error('Error resetting AUTO_INCREMENT:', err);
-                return res.status(500).json({ message: 'Failed to reset AUTO_INCREMENT' });
-              }
-              connection.release();
-              res.json({ message: 'Product deleted and IDs reordered successfully!' });
-            });
-          })
-          .catch((err) => {
-            console.error('Error reassigning IDs:', err);
-            res.status(500).json({ message: 'Failed to reorder product IDs' });
-          });
+        try {
+          const [result] = await connection.query('DELETE FROM products WHERE id = ?', [id]);
+
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Product not found' });
+          }
+
+          res.json({ success: true, message: 'Product deleted successfully!' });
+        } finally {
+          connection.release();
+        }
       } catch (error) {
         console.error('Error deleting product:', error);
-        res.status(500).json({ message: 'Failed to delete product' });
+        res.status(500).json({ success: false, message: 'Failed to delete product' });
       }
     },
+
+       // Product Controllers with Stock Management
+       updateProductStock: async (req, res) => {
+        const { id } = req.params;
+        const { changeAmount, changeType, reason } = req.body;
+  
+        try {
+          const connection = await pool.getConnection();
+          try {
+            await connection.beginTransaction();
+  
+            // Update product stock
+            const [result] = await connection.query(
+              'UPDATE products SET stock = stock + ?, last_stock_update = NOW() WHERE id = ?',
+              [changeType === 'increase' ? changeAmount : -changeAmount, id]
+            );
+  
+            // Record stock change in history
+            await connection.query(
+              'INSERT INTO stock_history (product_id, change_amount, change_type, reason) VALUES (?, ?, ?, ?)',
+              [id, changeAmount, changeType, reason]
+            );
+  
+            await connection.commit();
+            res.json({ success: true, message: 'Stock updated successfully' });
+          } catch (error) {
+            await connection.rollback();
+            throw error;
+          } finally {
+            connection.release();
+          }
+        } catch (error) {
+          console.error('Error updating stock:', error);
+          res.status(500).json({ success: false, message: 'Failed to update stock' });
+        }
+      },
 
     // Analytics Controllers
     getTotalSales: async (req, res) => {
@@ -1038,6 +1069,7 @@ module.exports = (pool) => {
       try {
         const connection = await pool.getConnection();
         try {
+          // Get sales data
           const [salesData] = await connection.query(`
             SELECT 
               DATE_FORMAT(created_at, '%Y-%m') as month,
@@ -1048,12 +1080,14 @@ module.exports = (pool) => {
             ORDER BY month
           `);
 
+          // Get order status counts
           const [orderStatus] = await connection.query(`
             SELECT status, COUNT(*) as count
             FROM orders
             GROUP BY status
           `);
 
+          // Get recent orders
           const [recentOrders] = await connection.query(`
             SELECT *
             FROM orders
@@ -1061,10 +1095,21 @@ module.exports = (pool) => {
             LIMIT 5
           `);
 
+          // Get low stock alerts
+          const [lowStock] = await connection.query(`
+            SELECT name, stock, min_stock
+            FROM products
+            WHERE stock <= min_stock
+          `);
+
           res.json({
-            salesData,
-            orderStatus,
-            recentOrders
+            success: true,
+            data: {
+              salesData,
+              orderStatus,
+              recentOrders,
+              lowStock
+            }
           });
         } finally {
           connection.release();
@@ -1080,7 +1125,9 @@ module.exports = (pool) => {
       try {
         const connection = await pool.getConnection();
         try {
-          const [orders] = await connection.query('SELECT * FROM orders ORDER BY created_at DESC');
+          const [orders] = await connection.query(
+            'SELECT * FROM orders ORDER BY created_at DESC'
+          );
           res.json(orders);
         } finally {
           connection.release();
@@ -1092,38 +1139,78 @@ module.exports = (pool) => {
     },
 
     createOrder: async (req, res) => {
-      const { customerName, product, quantity, status, totalAmount } = req.body;
-
       try {
+        // Destructuring all required fields from the request body
+        const { customerId, customerName, address, contactNumber, product, quantity, totalAmount, userEmail, status = 'Pending', source = 'manual' } = req.body;
+        
+        // Validate required fields (except for optional ones like `status` and `source`)
+        if (!customerId || !customerName || !address || !contactNumber || !product || !quantity || !totalAmount || !userEmail) {
+          return res.status(400).json({ success: false, message: 'All fields except status and source are required' });
+        }
+    
         const connection = await pool.getConnection();
         try {
+          // Query to insert the new order into the `orders` table
           const [result] = await connection.query(
-            'INSERT INTO orders (customer_name, product, quantity, status, total_amount) VALUES (?, ?, ?, ?, ?)',
-            [customerName, product, quantity, status || 'Pending', totalAmount]
+            `INSERT INTO orders (
+              customer_id, 
+              customer_name, 
+              address, 
+              contact_number, 
+              product, 
+              quantity, 
+              total_amount, 
+              status, 
+              user_email, 
+              source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [customerId, customerName, address, contactNumber, product, quantity, totalAmount, status, userEmail, source]
           );
-          res.json({ message: 'Order created successfully', orderId: result.insertId });
+    
+          res.status(201).json({
+            success: true,
+            message: 'Order created successfully!',
+            orderId: result.insertId,
+          });
         } finally {
           connection.release();
         }
       } catch (error) {
         console.error('Error creating order:', error);
-        res.status(500).json({ error: 'Failed to create order' });
+        res.status(500).json({
+          success: false,
+          message: 'Failed to create order'
+        });
       }
-    },
+    },        
 
     updateOrder: async (req, res) => {
       const { id } = req.params;
       const { status } = req.body;
 
       if (!['Pending', 'Delivered', 'Cancelled'].includes(status)) {
-        return res.status(400).json({ error: 'Invalid status' });
+        return res.status(400).json({ message: 'Invalid status' });
       }
 
       try {
         const connection = await pool.getConnection();
         try {
-          await connection.query('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
-          res.json({ message: `Order ${id} updated to ${status}` });
+          const [result] = await connection.query(
+            'UPDATE orders SET status = ? WHERE id = ?',
+            [status, id]
+          );
+
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ 
+              success: false, 
+              message: 'Order not found' 
+            });
+          }
+
+          res.json({ 
+            success: true, 
+            message: `Order ${id} updated to ${status}` 
+          });
         } finally {
           connection.release();
         }
@@ -1137,47 +1224,165 @@ module.exports = (pool) => {
       try {
         const connection = await pool.getConnection();
         try {
-          const apiUrls = [
-            'https://domain1.com/api/orders',
-            'https://domain2.com/api/orders',
-            'https://domain3.com/api/orders'
-          ];
-          
-          for (const apiUrl of apiUrls) {
-            try {
-              const response = await axios.get(apiUrl);
-              const orders = response.data;
-              
-              await Promise.all(orders.map(async (order) => {
-                const { orderId, customerName, product, quantity, status, source } = order;
-                
-                await connection.query(
-                  `INSERT INTO orders (order_id, customer_name, product, quantity, status, source)
-                   VALUES (?, ?, ?, ?, ?, ?)
-                   ON DUPLICATE KEY UPDATE 
-                   customer_name = VALUES(customer_name),
-                   product = VALUES(product),
-                   quantity = VALUES(quantity),
-                   status = VALUES(status)`,
-                  [orderId, customerName, product, quantity, status, source]
-                );
-              }));
-            } catch (error) {
-              console.error(`Error fetching from ${apiUrl}:`, error);
+          const response = await axios.get('https://dummyjson.com/products');
+          const products = response.data.products;
+
+          // Process each product from the API
+          for (const product of products) {
+            // Here, we try to extract the customer email from the product or order data
+            // If there's no customer email, we use a default one.
+            let userEmail = product.reviewerEmail || 'default@example.com'; // Try to fetch from product's data or use a default
+
+            // Check if the customer already exists in the customers table
+            const [customerResult] = await connection.query(
+              `SELECT id FROM customers WHERE email = ?`,
+              [userEmail]  // Using the extracted or default email
+            );
+
+            let customer_id;
+
+            if (customerResult.length === 0) {
+              // If the customer does not exist, create a new customer with the provided or default email
+              const [newCustomerResult] = await connection.query(
+                `INSERT INTO customers (name, email) VALUES (?, ?)`,
+                ['Guest', userEmail]  // Assuming 'Guest' for customer name
+              );
+              customer_id = newCustomerResult.insertId;
+            } else {
+              // If customer exists, use their customer ID
+              customer_id = customerResult[0].id;
             }
+            await connection.query(
+              `INSERT INTO customers (name, email, phone, \`orders\`, price, total) 
+               VALUES (?, ?, ?, ?, ?, ?) 
+               ON DUPLICATE KEY UPDATE 
+               price = VALUES(price), 
+               total = VALUES(total)`,
+              [
+                product.reviewerName || 'Unknown',  // name
+                product.id.toString(),  // email (assuming product.id is unique and corresponds to email)
+                product.phone || '1234567890',  // phone (this might need adjustment if phone is different)
+                product.title,  // order (use product title or name)
+                product.price,  // price
+                product.stock   // total (total should be price * quantity, consider this based on your logic)
+              ]                       
+            );
+
+            // Create sample order
+            const orderData = {
+              customer_name: product.reviewerName || 'Unknown',  // Default value if reviewerName is missing
+              address: product.comment || 'No address provided', 
+              contact_number: '1234567890',
+              product: product.title,
+              quantity: Math.floor(Math.random() * 5) + 1,
+              total_amount: product.price,
+              status: 'Pending',
+              user_email: req.body.userEmail || 'guest@example.com', 
+              customer_id
+            };
+
+            await connection.query(
+              `INSERT INTO orders (
+                customer_name, 
+                address,
+                product, 
+                quantity, 
+                total_amount,
+                status,
+                user_email,
+                customer_id
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                orderData.customer_name,
+                orderData.address,
+                orderData.product,
+                orderData.quantity,
+                orderData.total_amount,
+                orderData.status,
+                orderData.user_email,
+                orderData.customer_id,    // Use the customer_id here
+              ]
+            );            
           }
-          
-          res.json({ message: 'Orders fetched and updated successfully' });
+          await connection.query('ALTER TABLE orders AUTO_INCREMENT = 1');
+          console.log('Order sync completed and AUTO_INCREMENT reset to 1');
+          res.json({ 
+            success: true, 
+            message: 'Orders and products synced successfully' 
+          });
         } finally {
           connection.release();
         }
       } catch (error) {
         console.error('Error in fetchOrdersFromAPIs:', error);
-        res.status(500).json({ error: 'Failed to fetch and update orders' });
+        res.status(500).json({ 
+          success: false, 
+          message: 'Failed to sync orders and products' 
+        });
       }
     },
 
-    // Customer Controllers
+    syncCustomerDataFromOrders: async (req, res) => {
+      try {
+        const connection = await pool.getConnection();
+        try {
+          // Step 1: Fetch all the distinct customers from the orders table
+          const [ordersData] = await connection.query(`
+            SELECT 
+              c.id AS customer_id,
+              c.name AS customer_name,
+              c.email AS customer_email,
+              c.phone AS customer_phone,
+              COUNT(o.id) AS total_orders,
+              SUM(o.total_amount) AS total_spent,
+              MAX(o.created_at) AS last_order_date
+            FROM orders o
+            LEFT JOIN customers c ON o.customer_id = c.id
+            GROUP BY c.id
+          `);
+    
+          // Step 2: Process each customer and update their data in the customers table
+          for (const customer of ordersData) {
+            const { customer_id, customer_name, customer_email, customer_phone, total_orders, total_spent, last_order_date } = customer;
+    
+            // Step 3: Insert or Update customer details into the customers table
+            await connection.query(`
+              INSERT INTO customers (
+                id, name, email, phone, total_orders, total_spent, last_order_date
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+              ON DUPLICATE KEY UPDATE
+                total_orders = VALUES(total_orders),
+                total_spent = VALUES(total_spent),
+                last_order_date = VALUES(last_order_date)
+            `, [
+              customer_id, 
+              customer_name, 
+              customer_email, 
+              customer_phone, 
+              total_orders, 
+              total_spent, 
+              last_order_date
+            ]);
+          }
+    
+          res.json({ 
+            success: true, 
+            message: 'Customer data synced successfully from orders' 
+          });
+        } finally {
+          connection.release();
+        }
+      } catch (error) {
+        console.error('Error in syncing customer data:', error);
+        res.status(500).json({ 
+          success: false, 
+          message: 'Failed to sync customer data from orders' 
+        });
+      }
+    },
+    
+    // Fetch all customers with order details
     getAllCustomers: async (req, res) => {
       try {
         const connection = await pool.getConnection();
@@ -1185,9 +1390,9 @@ module.exports = (pool) => {
           const [customers] = await connection.query(`
             SELECT 
               c.*,
-              COUNT(o.id) as total_orders,
-              SUM(o.total_amount) as total_spent,
-              MAX(o.created_at) as last_order_date
+              COUNT(o.id) AS total_orders,
+              SUM(o.total_amount) AS total_spent,
+              MAX(o.created_at) AS last_order_date
             FROM customers c
             LEFT JOIN orders o ON c.id = o.customer_id
             GROUP BY c.id
@@ -1200,6 +1405,77 @@ module.exports = (pool) => {
         console.error('Error fetching customers:', error);
         res.status(500).json({ error: 'Failed to fetch customers' });
       }
-    }
+    },
+
+     // User Controllers
+     updateUserProfile: async (req, res) => {
+      const { email, name, profilePic } = req.body;
+      try {
+        const connection = await pool.getConnection();
+        try {
+          // Check if user exists
+          const [existingUser] = await connection.query(
+            'SELECT * FROM users WHERE email = ?',
+            [email]
+          );
+          if (existingUser.length === 0) {
+            // Create new user if doesn't exist
+            await connection.query(
+              'INSERT INTO users (email, name, profile_pic) VALUES (?, ?, ?)',
+              [email, name, profilePic]
+            );
+          } else {
+            // Update existing user
+            await connection.query(
+              'UPDATE users SET name = ?, profile_pic = ? WHERE email = ?',
+              [name, profilePic, email]
+            );
+          }
+          res.json({ 
+            success: true, 
+            message: 'Profile updated successfully' 
+          });
+        } finally {
+          connection.release();
+        }
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ 
+          success: false, 
+          message: 'Failed to update profile' 
+        });
+      }
+    },
+
+    getUserProfile: async (req, res) => {
+      const { email } = req.params;
+      try {
+        const connection = await pool.getConnection();
+        try {
+          const [rows] = await connection.query(
+            'SELECT name, email, profile_pic FROM users WHERE email = ?',
+            [email]
+          );
+          if (rows.length === 0) {
+            return res.status(404).json({ 
+              success: false, 
+              message: 'User not found' 
+            });
+          }
+          res.json({ 
+            success: true, 
+            data: rows[0] 
+          });
+        } finally {
+          connection.release();
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        res.status(500).json({ 
+          success: false, 
+          message: 'Failed to fetch profile' 
+        });
+      }
+    },
   };
 };

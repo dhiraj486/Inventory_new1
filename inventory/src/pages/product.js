@@ -13,7 +13,7 @@ const Product = () => {
 
   const fetchProducts = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/products');
+      const res = await axios.get('http://localhost:5000/api/products');
       console.log('Fetched products:', res.data);
       setProducts(res.data);
     } catch (error) {
@@ -43,12 +43,14 @@ const Product = () => {
     name: '',
     sku: '',
     location: '',
+    batch:'',
+    hsn:'',
     price: '',
     stock: '',
   });
 
   const openAddModal = () => {
-    setProductData({ id: '', name: '', sku: '', location: '', price: '', stock: '' });
+    setProductData({ id: '', name: '', sku: '', location: '', batch:'', hsn:'', price: '', stock: '' });
     setIsEditMode(false);
     setShowModal(true);
   };
@@ -73,15 +75,15 @@ const Product = () => {
     try {
       if (isEditMode) {
         console.log('Updating product...');
-        await axios.put(`http://localhost:5000/products/${productData.id}`, productData);
+        await axios.put(`http://localhost:5000/api/products/${productData.id}`, productData);
       } else {
         console.log('Adding new product...');
-        await axios.post('http://localhost:5000/products', productData);
+        await axios.post('http://localhost:5000/api/products', productData);
       }
   
       fetchProducts();
       setShowModal(false);
-      setProductData({ id: '', name: '', sku: '', location: '', price: '', stock: '' });
+      setProductData({ id: '', name: '', sku: '', location: '', batch:'', hsn:'', price: '', stock: '' });
     } catch (error) {
       console.error('Error saving product:', error);
     }
@@ -93,7 +95,7 @@ const Product = () => {
       return;
     }
     try {
-      await axios.delete(`http://localhost:5000/products/${id}`);
+      await axios.delete(`http://localhost:5000/api/products/${id}`);
       const updatedProducts = products.filter((product) => product.id !== id);
       setProducts(updatedProducts);
       localStorage.setItem('products', JSON.stringify(updatedProducts));
@@ -147,6 +149,8 @@ const Product = () => {
               <th style={styles.th}>Product</th>
               <th style={styles.th}>SKU</th>
               <th style={styles.th}>Location</th>
+              <th style={styles.th}>Batch</th>
+              <th style={styles.th}>HSN</th>
               <th style={styles.th}>Price</th>
               <th style={styles.th}>Stock</th>
               <th style={styles.th}>Action</th>
@@ -160,6 +164,8 @@ const Product = () => {
                   <td style={styles.td}>{item.name}</td>
                   <td style={styles.td}>{item.sku}</td>
                   <td style={styles.td}>{item.location}</td>
+                  <td style={styles.td}>{item.batch}</td>
+                  <td style={styles.td}>{item.hsn}</td>
                   <td style={styles.td}>{item.price}</td>
                   <td style={styles.td}>{item.stock}</td>
                   <td style={styles.td}>
@@ -241,6 +247,22 @@ const Product = () => {
             <input
               style={styles.modalInput}
               type="text"
+              name="batch"
+              placeholder="Batch"
+              value={productData.batch}
+              onChange={handleInputChange}
+            />
+            <input
+              style={styles.modalInput}
+              type="text"
+              name="hsn"
+              placeholder="HSN"
+              value={productData.hsn}
+              onChange={handleInputChange}
+            />
+            <input
+              style={styles.modalInput}
+              type="text"
               name="price"
               placeholder="Price"
               value={productData.price}
@@ -286,6 +308,8 @@ const styles = {
       backgroundColor: "#f8f9fa",
       padding: "20px",
       overflowY: "auto",
+      msOverflowStyle: "none", // for IE and Edge
+      scrollbarWidth: "none", 
     },
     header: {
       display: 'flex',

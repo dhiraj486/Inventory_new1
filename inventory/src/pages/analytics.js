@@ -37,7 +37,7 @@ const Analytics = () => {
     setLoadingSales(true);
     setErrorSales(null);
     try {
-      const response = await fetch(`${apiEndpoint}?type=sales&timeframe=${timeframe}`);
+      const response = await fetch(`/api/analytics/sales?timeframe=${timeframe}`);
       const data = await response.json();
       setSalesGraphData(data.graphData || []);
     } catch (error) {
@@ -52,7 +52,7 @@ const Analytics = () => {
     setLoadingOrders(true);
     setErrorOrders(null);
     try {
-      const response = await fetch(`${apiEndpoint}?type=orders&timeframe=${timeframe}`);
+      const response = await fetch(`/api/analytics/orders?timeframe=${timeframe}`);
       const data = await response.json();
       setOrdersPieData(data.pieData || []);
     } catch (error) {
@@ -69,7 +69,7 @@ const Analytics = () => {
     navigate("/");
   };
 
-  const location = useLocation(); // 👈 This gives you the current URL path
+  const location = useLocation(); 
   const currentPath = location.pathname;
 
   console.log("Current location path: ", currentPath);
@@ -300,6 +300,8 @@ const styles = {
     flex: 1,
     padding: "20px",
     overflowY: "auto",
+    msOverflowStyle: "none", // for IE and Edge
+    scrollbarWidth: "none", 
   },
   topCards: {
     display: "flex",

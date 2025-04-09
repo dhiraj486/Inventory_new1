@@ -45,6 +45,32 @@ const Settings = () => {
     localStorage.setItem("userName", e.target.value); // update name on change
   };
 
+  const handleSaveChanges = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          name,
+          profilePic
+        })
+      });
+  
+      const data = await response.json();
+      if (data.success) {
+        alert('Profile updated successfully!');
+      } else {
+        alert('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Error updating profile');
+    }
+  };  
+
   return (
     <div style={styles.container}>
       <Sidebar setIsModalOpen={setIsModalOpen} />
@@ -88,6 +114,12 @@ const Settings = () => {
             style={{ ...styles.input, backgroundColor: "#eee" }}
           />
         </div>
+        <button 
+          style={styles.uploadBtn} 
+          onClick={handleSaveChanges}
+        >
+          Save Changes
+        </button>
       </main>
       <Logout
         isOpen={isModalOpen}
@@ -108,7 +140,8 @@ const styles = {
   profilePic: { width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", border: "2px solid #ccc" },
   placeholderPic: { width: "100%", height: "100%", backgroundColor: "#e0e0e0", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "30px", color: "#888", cursor: "pointer" },
   fileInput: { display: "none" },
-  uploadBtn: { backgroundColor: "#000", color: "#fff", padding: "10px 20px", cursor: "pointer", border: "none", fontSize: "14px" },
+  uploadBtn: { backgroundColor: "#000", color: "#fff", padding: "10px 20px", cursor: "pointer", border: "none", fontSize: "14px", borderRadius: "0 ,5px,5px,0", },
+  uploadBtnHover: { backgroundColor: "#444" },
   formSection: { display: "flex", flexDirection: "column" },
   label: { marginBottom: "8px", fontWeight: "bold" },
   input: { width: "300px", padding: "10px", marginBottom: "20px", border: "1px solid #ccc", borderRadius: "4px" },

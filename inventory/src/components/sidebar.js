@@ -9,7 +9,7 @@ const Sidebar = ({ setIsModalOpen }) => {
 
   return (
     <aside style={styles.sidebar}>
-      {/* <img src="/assests/arinya.png" alt="Logo" style={styles.logoImg} /> */}
+      <img src="/assests/arinya.png" alt="Logo" style={styles.logoImg} />
       {/* <h2 style={styles.logo}>ARINYA</h2> */}
       <nav style={styles.nav}>
         <button

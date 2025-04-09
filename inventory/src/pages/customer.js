@@ -17,7 +17,7 @@ const Customer = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('https://your-api-endpoint.com/customers'); // Replace with your API endpoint
+        const response = await fetch(`http://localhost:5000/api/customers`); // Replace with your API endpoint
         const data = await response.json();
         setCustomers(data);
       } catch (error) {
@@ -42,14 +42,14 @@ const Customer = () => {
 
   console.log("Current location path: ", currentPath);
 
-  const filteredCustomers = customers.filter((customer) =>
-    String(customer.Name).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(customer.Email).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(customer.Phone).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(customer.Order).toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredCustomers = Array.isArray(customers) ? customers.filter((customer) =>
+    String(customer.name).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(customer.email).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(customer.phone).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(customer.orders).toLowerCase().includes(searchTerm.toLowerCase()) ||
     String(customer.price).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(customer.Total).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    String(customer.total).toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
 
   const totalPages = Math.ceil(filteredCustomers.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -86,12 +86,12 @@ const Customer = () => {
           <tbody>
             {displayedCustomers.map((item, index) => (
               <tr key={index} style={styles.tr}>
-                <td style={styles.td}>{item.Name}</td>
-                <td style={styles.td}>{item.Email}</td>
-                <td style={styles.td}>{item.Phone}</td>
-                <td style={styles.td}>{item.Order}</td>
+                <td style={styles.td}>{item.name}</td>
+                <td style={styles.td}>{item.email}</td>
+                <td style={styles.td}>{item.phone}</td>
+                <td style={styles.td}>{item.orders}</td>
                 <td style={styles.td}>{item.price}</td>
-                <td style={styles.td}>{item.Total}</td>
+                <td style={styles.td}>{item.total}</td>
               </tr>
             ))}
           </tbody>
@@ -136,6 +136,8 @@ const styles = {
     backgroundColor: "#f8f9fa",
     padding: "20px",
     overflowY: "auto",
+    msOverflowStyle: "none", // for IE and Edge
+    scrollbarWidth: "none", 
   },
   header: {
     display: 'flex',

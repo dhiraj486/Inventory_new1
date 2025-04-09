@@ -138,6 +138,7 @@ module.exports = (pool) => {
   router.post('/products', controllers.createProduct);
   router.put('/products/:id', controllers.updateProduct);
   router.delete('/products/:id', controllers.deleteProduct);
+  router.put('/products/:id/stock', controllers.updateProductStock);
 
   // Analytics routes
   router.get('/analytics/total-sales', controllers.getTotalSales);
@@ -154,6 +155,10 @@ module.exports = (pool) => {
 
   // Customers routes
   router.get('/customers', controllers.getAllCustomers);
+
+    // User routes
+    router.get('/users/:email', controllers.getUserProfile);
+    router.put('/users/profile', controllers.updateUserProfile);
 
   return router;
 };

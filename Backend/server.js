@@ -368,11 +368,6 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(cookieParser());
 
-const DOMAIN_APIS = [
-  'https://domain1.com/api/orders',
-  'https://domain2.com/api/orders',
-  'https://domain3.com/api/orders'
-];
 
 // Database connection pool
 const pool = mysql.createPool({
@@ -394,16 +389,18 @@ const initDatabase = async () => {
       await connection.query(`
         CREATE TABLE IF NOT EXISTS users (
           id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(255),
           email VARCHAR(255) UNIQUE NOT NULL,
           otp VARCHAR(6),
           otp_expires TIMESTAMP,
+          profile_pic LONGTEXT,
           session_token VARCHAR(64),
           session_expires TIMESTAMP,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
 
-      // Create products table
+      // Create products table with stock tracking
       await connection.query(`
         CREATE TABLE IF NOT EXISTS products (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -412,7 +409,24 @@ const initDatabase = async () => {
           location VARCHAR(255),
           price DECIMAL(10,2) NOT NULL,
           stock INT NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          min_stock INT DEFAULT 10,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          last_stock_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          batch INT NOT NULL,
+          hsn VARCHAR(50) NOT NULL
+        )
+      `);
+
+      // Create stock_history table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS stock_history (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          product_id INT NOT NULL,
+          change_amount INT NOT NULL,
+          change_type ENUM('increase', 'decrease') NOT NULL,
+          reason VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (product_id) REFERENCES products(id)
         )
       `);
 
@@ -428,28 +442,40 @@ const initDatabase = async () => {
         )
       `);
 
-      // Create orders table
       await connection.query(`
         CREATE TABLE IF NOT EXISTS orders (
           id INT AUTO_INCREMENT PRIMARY KEY,
+          customer_id INT NOT NULL,
           customer_name VARCHAR(255) NOT NULL,
+          address VARCHAR(255) NOT NULL,
+          contact_number VARCHAR(20) NOT NULL,
           product VARCHAR(255) NOT NULL,
           quantity INT NOT NULL,
+          total_amount DECIMAL(10, 2) NOT NULL,
           status ENUM('Pending', 'Delivered', 'Cancelled') DEFAULT 'Pending',
+          user_email VARCHAR(255) NOT NULL,
           source VARCHAR(50) DEFAULT 'manual',
-          total_amount DECIMAL(10,2) NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_email) REFERENCES users(email),
+          FOREIGN KEY (customer_id) REFERENCES customers(id),
+          contact_number varchar(50) null
         )
-      `);
-
-      // Create customers table
+      `);      
+      
+// Create customers table with price and total fields
       await connection.query(`
         CREATE TABLE IF NOT EXISTS customers (
           id INT AUTO_INCREMENT PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
           email VARCHAR(255) UNIQUE NOT NULL,
+          phone VARCHAR(20) NOT NULL,
+          orders VARCHAR(255) NOT NULL,
+          total VARCHAR(255) NOT NULL,
           last_order_date TIMESTAMP,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          total_spent DECIMAL(10, 2) DEFAULT 0,  -- To store the total amount spent by the customer
+          total_orders INT DEFAULT 0,           -- To store the total number of orders for the customer
+          price DECIMAL(10, 2) DEFAULT 0        -- To store the total price value for each customer (could be derived from orders)
         )
       `);
 
@@ -462,8 +488,6 @@ const initDatabase = async () => {
     process.exit(1);
   }
 };
-
-module.exports = { pool, DOMAIN_APIS };
 
 // Initialize routes
 const routes = require('./routes')(pool);

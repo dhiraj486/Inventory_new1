@@ -6,7 +6,7 @@ import {  BarChart,Bar,LineChart,Line,PieChart,Pie,Cell,XAxis,YAxis,CartesianGri
 import Sidebar from '../components/sidebar';
 
 const Dashboard = () => {
-  const API_BASE_URL = "https://example.com/api";
+  const API_BASE_URL = "http://localhost:5000";
   const navigate = useNavigate();
 
   const [graphData, setGraphData] = useState([]);
@@ -72,33 +72,58 @@ const Dashboard = () => {
     setWeeklyCustomers({ current: currentCustomers, last: lastCustomers, change: customersChange.toFixed(1) });
   };
 
+  // const fetchData = async () => {
+  //   try {
+  //     const response = await fetch(`${API_BASE_URL}/api/dashboard/summary`|| `${API_BASE_URL}/api/dashboard/sales-graph` );
+  //     const data = await response.json();
+
+  //     if (data.success) {
+  //       const graphPayload = data.payload.salesGraph || [];
+  //       setGraphData(graphPayload);
+  //       setRecentOrders(data.payload.recentOrders || []);
+  //       calculateWeeklyMetrics(graphPayload);
+  //       setError(null);
+
+  //       // 👉 Fetch active/inactive customer data from API
+  //       const customerStatsResponse = await fetch(`${API_BASE_URL}/api/dashboard/recent-orders`);
+  //       const customerStatsData = await customerStatsResponse.json();
+
+  //       if (customerStatsData.success) {
+  //         const activeCount = customerStatsData.payload.active || 0;
+  //         const inactiveCount = customerStatsData.payload.inactive || 0;
+
+  //         setCustomerStatusData([
+  //           { name: "Active", value: activeCount },
+  //           { name: "Inactive", value: inactiveCount },
+  //         ]);
+  //       } else {
+  //         setError("Failed to fetch customer status data");
+  //       }
+  //     } else {
+  //       setError("Failed to load dashboard data");
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     setError("Error fetching data");
+  //   }
+  // };
+
   const fetchData = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/get-dashboard-data`);
+      const response = await fetch('http://localhost:5000/api/dashboard');
       const data = await response.json();
-
+      
       if (data.success) {
-        const graphPayload = data.payload.salesGraph || [];
-        setGraphData(graphPayload);
-        setRecentOrders(data.payload.recentOrders || []);
-        calculateWeeklyMetrics(graphPayload);
-        setError(null);
-
-        // 👉 Fetch active/inactive customer data from API
-        const customerStatsResponse = await fetch(`${API_BASE_URL}/get-customer-status`);
-        const customerStatsData = await customerStatsResponse.json();
-
-        if (customerStatsData.success) {
-          const activeCount = customerStatsData.payload.active || 0;
-          const inactiveCount = customerStatsData.payload.inactive || 0;
-
-          setCustomerStatusData([
-            { name: "Active", value: activeCount },
-            { name: "Inactive", value: inactiveCount },
-          ]);
-        } else {
-          setError("Failed to fetch customer status data");
-        }
+        setGraphData(data.data.salesData);
+        setRecentOrders(data.data.recentOrders);
+        calculateWeeklyMetrics(data.data.salesData);
+        
+        // Update customer status
+        const { active, inactive } = data.data.orderStatus;
+        setCustomerStatusData([
+          { name: "Active", value: active },
+          { name: "Inactive", value: inactive }
+        ]);
       } else {
         setError("Failed to load dashboard data");
       }
@@ -107,6 +132,7 @@ const Dashboard = () => {
       setError("Error fetching data");
     }
   };
+  
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 60000);
@@ -246,6 +272,8 @@ const styles = {
     backgroundColor: "#f8f9fa",
     padding: "20px",
     overflowY: "auto",
+    msOverflowStyle: "none", // for IE and Edge
+    scrollbarWidth: "none", 
   },
   header: {
     display: "flex",
