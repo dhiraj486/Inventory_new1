@@ -157,8 +157,7 @@ module.exports = (pool) => {
   router.get('/customers', controllers.getAllCustomers);
 
     // User routes
-    router.get('/users/:email', controllers.getUserProfile);
-    router.put('/users/profile', controllers.updateUserProfile);
+    router.put('/users', controllers.updateUserProfile);
 
   return router;
 };

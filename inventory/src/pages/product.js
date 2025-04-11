@@ -10,6 +10,14 @@ const Product = () => {
   const [products, setProducts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [stockUpdate, setStockUpdate] = useState({
+    changeAmount: '',
+    changeType: 'increase',
+    reason: ''
+  });
+
 
   const fetchProducts = async () => {
     try {
@@ -61,6 +69,37 @@ const Product = () => {
     setIsEditMode(true);
     setCurrentEditIndex(index);
     setShowModal(true);
+  };
+
+  const openStockModal = (product) => {
+    setSelectedProduct(product);
+    setStockUpdate({
+      changeAmount: '',
+      changeType: 'increase',
+      reason: ''
+    });
+    setShowStockModal(true);
+  };
+
+  const handleStockUpdate = async () => {
+    try {
+      const response = await axios.put(
+        `http://localhost:5000/api/products/${selectedProduct.id}/stock`,
+        stockUpdate
+      );
+
+      if (response.data.success) {
+        // Update the products list with the new stock value
+        const updatedProducts = products.map(p => 
+          p.id === selectedProduct.id ? response.data.product : p
+        );
+        setProducts(updatedProducts);
+        setShowStockModal(false);
+      }
+    } catch (error) {
+      console.error('Error updating stock:', error);
+      alert(error.response?.data?.message || 'Failed to update stock');
+    }
   };
 
   const handleInputChange = (e) => {
@@ -116,11 +155,17 @@ const Product = () => {
 
   console.log("Current location path: ", currentPath);
 
-  const filteredProducts = products.filter((product) =>
-    String(product.name).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(product.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(product.sku).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = products.filter((product) => {
+    if (!product) return false;
+  
+    const name = String(product.name ?? "").toLowerCase();
+    const id = String(product.id ?? "").toLowerCase();
+    const sku = String(product.sku ?? "").toLowerCase();
+    const search = searchTerm.toLowerCase();
+  
+    return name.includes(search) || id.includes(search) || sku.includes(search);
+  });
+  
   
   const totalPages = Math.ceil(filteredProducts.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -167,7 +212,17 @@ const Product = () => {
                   <td style={styles.td}>{item.batch}</td>
                   <td style={styles.td}>{item.hsn}</td>
                   <td style={styles.td}>{item.price}</td>
-                  <td style={styles.td}>{item.stock}</td>
+                  <td style={styles.td}>
+                    <div style={styles.stockCell}>
+                      {item.stock}
+                      <button 
+                        style={styles.updateStockButton}
+                        onClick={() => openStockModal(item)}
+                      >
+                        ↻
+                      </button>
+                    </div>
+                  </td>
                   <td style={styles.td}>
                     <button style={styles.editButton} onClick={() => openEditModal(index)}>
                       ✏️
@@ -282,6 +337,66 @@ const Product = () => {
                 {isEditMode ? 'Update' : 'Save'}
               </button>
               <button style={styles.cancelButton} onClick={() => setShowModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Update Modal */}
+      {showStockModal && selectedProduct && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h2 style={{ marginBottom: '20px' }}>Update Stock for {selectedProduct.name}</h2>
+            
+            <div style={styles.stockUpdateField}>
+              <label>Current Stock: {selectedProduct.stock}</label>
+            </div>
+
+            <div style={styles.stockUpdateField}>
+              <label>Change Type:</label>
+              <select
+                style={styles.modalInput}
+                value={stockUpdate.changeType}
+                onChange={(e) => setStockUpdate({...stockUpdate, changeType: e.target.value})}
+              >
+                <option value="increase">Increase</option>
+                <option value="decrease">Decrease</option>
+              </select>
+            </div>
+
+            <div style={styles.stockUpdateField}>
+              <label>Amount:</label>
+              <input
+                style={styles.modalInput}
+                type="number"
+                min="1"
+                value={stockUpdate.changeAmount}
+                onChange={(e) => setStockUpdate({...stockUpdate, changeAmount: parseInt(e.target.value)})}
+              />
+            </div>
+
+            <div style={styles.stockUpdateField}>
+              <label>Reason:</label>
+              <input
+                style={styles.modalInput}
+                type="text"
+                value={stockUpdate.reason}
+                onChange={(e) => setStockUpdate({...stockUpdate, reason: e.target.value})}
+                placeholder="Enter reason for stock update"
+              />
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+              <button 
+                style={styles.saveButton} 
+                onClick={handleStockUpdate}
+                disabled={!stockUpdate.changeAmount || !stockUpdate.reason}
+              >
+                Update Stock
+              </button>
+              <button style={styles.cancelButton} onClick={() => setShowStockModal(false)}>
                 Cancel
               </button>
             </div>
@@ -427,6 +542,23 @@ const styles = {
       border: 'none', borderRadius: '5px', cursor: 'pointer', disabled: { backgroundColor: '#ccc' }
     },
     pageInfo: { fontSize: '14px' },
+    updateStockButton: {
+      backgroundColor: '#111',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '4px',
+      padding: '4px 8px',
+      cursor: 'pointer',
+      fontSize: '12px',
+    },
+    stockCell: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+    },
+    stockUpdateField: {
+      marginBottom: '10px',
+    },
   };
   
 export default Product;

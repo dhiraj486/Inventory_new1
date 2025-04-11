@@ -976,6 +976,70 @@ module.exports = (pool) => {
           console.error('Error updating stock:', error);
           res.status(500).json({ success: false, message: 'Failed to update stock' });
         }
+      },   // Product Controllers with Real-time Stock Updates
+      updateProductStock: async (req, res) => {
+        const { id } = req.params;
+        const { changeAmount, changeType, reason } = req.body;
+  
+        try {
+          const connection = await pool.getConnection();
+          try {
+            await connection.beginTransaction();
+  
+            // Get current stock
+            const [currentStock] = await connection.query(
+              'SELECT stock FROM products WHERE id = ?',
+              [id]
+            );
+  
+            if (currentStock.length === 0) {
+              throw new Error('Product not found');
+            }
+  
+            const newStock = changeType === 'increase' 
+              ? currentStock[0].stock + changeAmount 
+              : currentStock[0].stock - changeAmount;
+  
+            if (newStock < 0) {
+              throw new Error('Insufficient stock');
+            }
+            // Update product stock
+            await connection.query(
+              'UPDATE products SET stock = ?, last_stock_update = NOW() WHERE id = ?',
+              [newStock, id]
+            );
+            // Record stock history
+            await connection.query(
+              'INSERT INTO stock_history (product_id, change_amount, change_type, reason) VALUES (?, ?, ?, ?)',
+              [id, changeAmount, changeType, reason]
+            );
+  
+            await connection.commit();
+  
+            // Send updated product data
+            const [updatedProduct] = await connection.query(
+              'SELECT * FROM products WHERE id = ?',
+              [id]
+            );
+  
+            res.json({
+              success: true,
+              message: 'Stock updated successfully',
+              product: updatedProduct[0]
+            });
+          } catch (error) {
+            await connection.rollback();
+            throw error;
+          } finally {
+            connection.release();
+          }
+        } catch (error) {
+          console.error('Error updating stock:', error);
+          res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to update stock'
+          });
+        }
       },
 
     // Analytics Controllers
@@ -1087,11 +1151,18 @@ module.exports = (pool) => {
             GROUP BY status
           `);
 
-          // Get recent orders
+          // Get recent orders with proper formatting
           const [recentOrders] = await connection.query(`
-            SELECT *
-            FROM orders
-            ORDER BY created_at DESC
+            SELECT 
+              o.id,
+              o.customer_name,
+              o.product,
+              o.quantity,
+              o.total_amount,
+              o.status,
+              DATE_FORMAT(o.created_at, '%Y-%m-%d %H:%i:%s') as created_at
+            FROM orders o
+            ORDER BY o.created_at DESC
             LIMIT 5
           `);
 
@@ -1302,7 +1373,17 @@ module.exports = (pool) => {
                 orderData.user_email,
                 orderData.customer_id,    // Use the customer_id here
               ]
-            );            
+            ); 
+            //   // Create sales record
+            // await connection.query(
+            //   `INSERT INTO sales (product_id, quantity, total_price)
+            //    VALUES (?, ?, ?)`,
+            //   [
+            //     product.id,
+            //     Math.floor(Math.random() * 10) + 1,
+            //     product.price
+            //   ]
+            // );
           }
           await connection.query('ALTER TABLE orders AUTO_INCREMENT = 1');
           console.log('Order sync completed and AUTO_INCREMENT reset to 1');
@@ -1365,12 +1446,17 @@ module.exports = (pool) => {
               last_order_date
             ]);
           }
-    
+          
           res.json({ 
             success: true, 
             message: 'Customer data synced successfully from orders' 
           });
-        } finally {
+        } 
+        catch (error) {
+        await connection.rollback();
+        throw error;
+      }
+        finally {
           connection.release();
         }
       } catch (error) {
@@ -1408,17 +1494,19 @@ module.exports = (pool) => {
     },
 
      // User Controllers
-     updateUserProfile: async (req, res) => {
+         updateUserProfile: async (req, res) => {
       const { email, name, profilePic } = req.body;
+      
       try {
         const connection = await pool.getConnection();
         try {
-          // Check if user exists
-          const [existingUser] = await connection.query(
-            'SELECT * FROM users WHERE email = ?',
+          // First check if user exists
+          const [userExists] = await connection.query(
+            'SELECT id FROM users WHERE email = ?',
             [email]
           );
-          if (existingUser.length === 0) {
+
+          if (userExists.length === 0) {
             // Create new user if doesn't exist
             await connection.query(
               'INSERT INTO users (email, name, profile_pic) VALUES (?, ?, ?)',
@@ -1431,6 +1519,7 @@ module.exports = (pool) => {
               [name, profilePic, email]
             );
           }
+          
           res.json({ 
             success: true, 
             message: 'Profile updated successfully' 
@@ -1439,7 +1528,7 @@ module.exports = (pool) => {
           connection.release();
         }
       } catch (error) {
-        console.error('Error updating profile:', error);
+        console.error('Error updating user profile:', error);
         res.status(500).json({ 
           success: false, 
           message: 'Failed to update profile' 

@@ -142,8 +142,8 @@ const Dashboard = () => {
   const COLORS = ["#0088FE", "#FF8042"];
 
   const filteredOrders = recentOrders.filter((order) =>
-    order.customer.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    (order.customer ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+  );  
 
   return (
     <div style={styles.container}>

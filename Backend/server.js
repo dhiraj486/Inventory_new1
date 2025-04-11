@@ -365,7 +365,8 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 app.use(cookieParser());
 
 
@@ -374,7 +375,7 @@ const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || 'admin1234',
-  database: process.env.DB_NAME || 'inventory_db',
+  database: process.env.DB_NAME || 'inventorydb',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -456,9 +457,7 @@ const initDatabase = async () => {
           user_email VARCHAR(255) NOT NULL,
           source VARCHAR(50) DEFAULT 'manual',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_email) REFERENCES users(email),
-          FOREIGN KEY (customer_id) REFERENCES customers(id),
-          contact_number varchar(50) null
+          FOREIGN KEY (customer_id) REFERENCES customers(id)
         )
       `);      
       
